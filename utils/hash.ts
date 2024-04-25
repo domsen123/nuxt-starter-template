@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto'
+import MD5 from 'crypto-js/md5'
 
 export const simpleHash = (input: string) => {
-  return createHash('xxhash64').update(input).digest('hex')
+  return MD5(input).toString()
 }

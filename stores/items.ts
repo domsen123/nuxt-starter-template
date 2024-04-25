@@ -1,19 +1,22 @@
-import type { RefLike } from '~/types/helper'
-import type { AnyItem, ItemStoreOptions, PrimaryKeyQuery, StoredItem } from '~/types/item'
+import type { AnyItem, ItemStoreOptions, PrimaryKeyQuery, RefLike, SavedItem, StoredItem } from '~/types'
 import { ObjectKeys } from '~/utils/object'
 
 export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptions<Item>) => {
-  const { collectionName, primaryKey } = options
+  const internalColumns = ['_id', 'version', 'version_id', 'created_at', 'updated_at', 'created_by', 'updated_by']
 
+  const { collectionName, primaryKey } = options
   const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey]
+
+  const { getRequest, addRequest, removeRequest, requestExists } = useRequestsStore()
+  const { addError } = useErrorStore()
 
   const getRequestHash = (obj: any) => {
     return simpleHash(`${collectionName}/${JSON.stringify(obj)}`)
   }
 
-  const toStoredItem = <T extends Item>(item: T): StoredItem<T> => ({
+  const toStoredItem = <T extends SavedItem<Item>>(item: T): StoredItem<T> => ({
     ...item,
-    __storedAt: new Date(),
+    __stored_at: new Date(),
   })
 
   const useItemStore = defineStore(`items:${collectionName}`, () => {
@@ -26,32 +29,42 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
       })
     })
 
-    const mergeOneStateItem = (newItem: Partial<Item>, oldItem: Item) => {
-      return ObjectKeys(newItem).reduce((acc, key) => {
+    const getItemById = (_id: RefLike<string>) => computed(() => items.value.find(i => i._id === _id))
+
+    const mergeOneStateItem = (newItem: Partial<Item>, oldItem: SavedItem<Item>): SavedItem<Item> => {
+      return ObjectKeys(omit(oldItem, internalColumns)).reduce((acc, key) => {
         acc[key] = newItem[key] ?? oldItem[key]
         return acc
-      }, {} as Item)
+      }, {} as SavedItem<Item>)
     }
 
-    const setOneStateItem = (item: Item) => {
+    const setOneStateItem = (item: SavedItem<Item>) => {
       const existsAtIndex = items.value.findIndex(i => primaryKeys.every(key => i[key] === item[key]))
+      console.log('existsAtIndex', existsAtIndex)
       if (existsAtIndex !== -1) {
         item = mergeOneStateItem(item, items.value[existsAtIndex])
         items.value.splice(existsAtIndex, 1, toStoredItem(item))
       }
       else {
-        items.value.push({ ...item, __storedAt: new Date() })
+        items.value.push(toStoredItem(item))
       }
     }
 
-    const setManyStateItems = (items: Item[]) => {
+    const setManyStateItems = (items: SavedItem<Item>[]) => {
       items.forEach(setOneStateItem)
     }
 
-    const removeOneStateItem = (item: Item) => {
+    const removeOneStateItem = (item: SavedItem<Item>) => {
       const existsAtIndex = items.value.findIndex(i => primaryKeys.every(key => i[key] === item[key]))
       if (existsAtIndex !== -1)
         items.value.splice(existsAtIndex, 1)
+    }
+
+    const handleResult = ({ data }: { data: any }) => {
+      if (Array.isArray(data.value))
+        setManyStateItems(data.value)
+      else
+        setOneStateItem(data.value)
     }
 
     return {
@@ -60,6 +73,7 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
       setOneStateItem,
       setManyStateItems,
       removeOneStateItem,
+      handleResult,
     }
   })
 
@@ -69,9 +83,38 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
   const upsertItem = async (item: Item) => {}
   const upsertItems = async (items: Item[]) => {}
 
-  const getItem = async (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {}
+  const getItem = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {
+    const itemStore = useItemStore()
+    const requestHash = getRequestHash(unref(query))
+
+    const request = useAsyncData(requestHash, () => $fetch<SavedItem<Item>>(`/api/items/${collectionName}/query`, {
+      method: 'POST',
+      body: JSON.stringify({
+        filter: {
+          $and: ObjectKeys(unref(query)).map(key => ({
+            [key]: unref(query)[key],
+          })),
+        },
+        singleton: true,
+      }),
+    }), {
+      dedupe: 'defer',
+      watch: [query],
+    })
+
+    request.then(itemStore.handleResult).catch(addError)
+
+    return {
+      ...request,
+      item: useItemStore().getItemByPrimaryKey(query),
+    }
+  }
   const getItems = async (queries: RefLike<PrimaryKeyQuery<Item, typeof options>>[]) => {}
 
   const removeItem = async (item: Item) => {}
   const removeItems = async (items: Item[]) => {}
+
+  return {
+    getItem,
+  }
 }

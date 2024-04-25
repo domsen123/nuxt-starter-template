@@ -26,6 +26,20 @@ useSeoMeta({
   twitterImage: 'https://dashboard-template.nuxt.dev/social-card.png',
   twitterCard: 'summary_large_image',
 })
+
+const itemStore = useItems({
+  collectionName: '_test_',
+  primaryKey: 'id',
+  ttl: 200,
+})
+
+const { data } = itemStore.getItem({ id: '123' })
+
+onMounted(() => {
+  setInterval(() => {
+    itemStore.getItem({ id: '123' })
+  }, 500)
+})
 </script>
 
 <template>
@@ -33,6 +47,7 @@ useSeoMeta({
     <NuxtLoadingIndicator />
 
     <NuxtLayout>
+      <pre>{{ data }}</pre>
       <NuxtPage />
     </NuxtLayout>
 

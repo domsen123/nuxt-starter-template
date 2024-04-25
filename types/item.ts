@@ -1,10 +1,20 @@
-export type StoredItem<T extends AnyItem> = T & {
-  __storedAt: Date
+export type StoredItem<T extends AnyItem> = SavedItem<T> & {
+  __stored_at: Date
 }
 
 export interface AnyItem {
   [key: string | number | symbol]: any
 }
+
+export type SavedItem<Item extends AnyItem> = {
+  _id: string
+  version: number
+  version_id: string
+  created_at: Date
+  updated_at: Date
+  created_by: string
+  updated_by: string
+} & Item
 
 export type SinglePrimaryKey<Item> = keyof Item
 export type MultiplePrimaryKey<Item> = Array<keyof Item>
