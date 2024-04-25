@@ -42,7 +42,7 @@ watch(q, () => {
   console.log(q.value)
 }, { deep: true })
 
-const { data } = itemStore.getItem(q)
+const { data, item } = await itemStore.getItem(q)
 </script>
 
 <template>
@@ -53,6 +53,7 @@ const { data } = itemStore.getItem(q)
       <div>
         <pre>{{ q }}</pre>
         <pre>{{ data }}</pre>
+        <pre>{{ item }}</pre>
 
         <UButton @click="increment">
           increment

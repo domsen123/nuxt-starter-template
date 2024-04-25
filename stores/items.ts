@@ -40,7 +40,6 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
 
     const setOneStateItem = (item: SavedItem<Item>) => {
       const existsAtIndex = items.value.findIndex(i => primaryKeys.every(key => i[key] === item[key]))
-      console.log('existsAtIndex', existsAtIndex)
       if (existsAtIndex !== -1) {
         item = mergeOneStateItem(item, items.value[existsAtIndex])
         items.value.splice(existsAtIndex, 1, toStoredItem(item))
@@ -77,12 +76,12 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     }
   })
 
-  const getItem = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {
+  const getItem = async (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {
     const itemStore = useItemStore()
 
     const queryHash = computed(() => getRequestHash(query.value))
 
-    const request = useAsyncData(
+    const request = await useAsyncData(
       queryHash.value,
       () => $fetch<SavedItem<Item>>(`/api/items/${collectionName}/query`, {
         method: 'POST',
@@ -101,7 +100,9 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
       },
     )
 
-    request.then(result => useItemStore().handleResult(result)).catch(addError)
+    watch(request.data, () => {
+      itemStore.handleResult(request)
+    }, { immediate: true, deep: true })
 
     return {
       ...request,
