@@ -32,13 +32,18 @@ const itemStore = useItems({
   primaryKey: 'id',
   ttl: 200,
 })
+const q = ref({ id: 123 })
 
-const { data } = itemStore.getItem({ id: '123' })
+const { data } = itemStore.getItem(q)
 
+watch(() => q.value, (newQ) => {
+  console.log('watch from component', newQ)
+})
 onMounted(() => {
   setInterval(() => {
-    itemStore.getItem({ id: '123' })
-  }, 500)
+    q.value.id = q.value.id + 1
+    console.log('updating', q.value)
+  }, 1000)
 })
 </script>
 

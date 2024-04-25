@@ -85,9 +85,8 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
 
   const getItem = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {
     const itemStore = useItemStore()
-    const requestHash = getRequestHash(unref(query))
 
-    const request = useAsyncData(requestHash, () => $fetch<SavedItem<Item>>(`/api/items/${collectionName}/query`, {
+    const request = useAsyncData(getRequestHash(unref(query)), () => $fetch<SavedItem<Item>>(`/api/items/${collectionName}/query`, {
       method: 'POST',
       body: JSON.stringify({
         filter: {
@@ -99,14 +98,18 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
       }),
     }), {
       dedupe: 'defer',
-      watch: [query],
+      watch: 'value' in query ? [() => query.value] : [],
     })
 
-    request.then(itemStore.handleResult).catch(addError)
+    watch(() => query, () => {
+      console.log('query changed', unref(query))
+    })
+
+    request.then(result => useItemStore().handleResult(result)).catch(addError)
 
     return {
       ...request,
-      item: useItemStore().getItemByPrimaryKey(query),
+      item: itemStore.getItemByPrimaryKey(query),
     }
   }
   const getItems = async (queries: RefLike<PrimaryKeyQuery<Item, typeof options>>[]) => {}
