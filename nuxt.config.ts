@@ -7,9 +7,6 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
     '@pinia/nuxt',
   ],
-  pinia: {
-    storesDirs: ['./core/stores/**'],
-  },
   ui: {
     icons: ['heroicons', 'simple-icons'],
   },
