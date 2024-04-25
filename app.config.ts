@@ -8,4 +8,8 @@ export default defineAppConfig({
       },
     },
   },
+  seo: {
+    title: 'Nuxt UI Pro',
+    description: 'The ultimate Nuxt UI framework',
+  },
 })

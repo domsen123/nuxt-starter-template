@@ -1,6 +1,6 @@
 <script setup lang="ts">
+const appConfig = useAppConfig()
 const colorMode = useColorMode()
-
 const color = computed(() => colorMode.value === 'dark' ? '#111827' : 'white')
 
 useHead({
@@ -17,14 +17,11 @@ useHead({
   },
 })
 
-const title = 'Nuxt UI Pro - Dashboard template'
-const description = 'Nuxt UI Pro is a collection of premium Vue components built on top of Nuxt UI to create beautiful & responsive Nuxt applications in minutes.'
-
 useSeoMeta({
-  title,
-  description,
-  ogTitle: title,
-  ogDescription: description,
+  title: `%s - ${appConfig.seo.title}`,
+  description: appConfig.seo.description,
+  ogTitle: `%s - ${appConfig.seo.title}`,
+  ogDescription: appConfig.seo.description,
   ogImage: 'https://dashboard-template.nuxt.dev/social-card.png',
   twitterImage: 'https://dashboard-template.nuxt.dev/social-card.png',
   twitterCard: 'summary_large_image',
