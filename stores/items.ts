@@ -86,24 +86,26 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
   const getItem = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {
     const itemStore = useItemStore()
 
-    const request = useAsyncData(getRequestHash(unref(query)), () => $fetch<SavedItem<Item>>(`/api/items/${collectionName}/query`, {
-      method: 'POST',
-      body: JSON.stringify({
-        filter: {
-          $and: ObjectKeys(unref(query)).map(key => ({
-            [key]: unref(query)[key],
-          })),
-        },
-        singleton: true,
-      }),
-    }), {
-      dedupe: 'defer',
-      watch: 'value' in query ? [() => query.value] : [],
-    })
+    const queryHash = computed(() => getRequestHash(query.value))
 
-    watch(() => query, () => {
-      console.log('query changed', unref(query))
-    })
+    const request = useAsyncData(
+      queryHash.value,
+      () => $fetch<SavedItem<Item>>(`/api/items/${collectionName}/query`, {
+        method: 'POST',
+        body: JSON.stringify({
+          filter: {
+            $and: ObjectKeys(unref(query)).map(key => ({
+              [key]: unref(query)[key],
+            })),
+          },
+          singleton: true,
+        }),
+      }),
+      {
+        dedupe: 'defer',
+        watch: [queryHash],
+      },
+    )
 
     request.then(result => useItemStore().handleResult(result)).catch(addError)
 

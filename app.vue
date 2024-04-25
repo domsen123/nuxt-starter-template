@@ -34,17 +34,15 @@ const itemStore = useItems({
 })
 const q = ref({ id: 123 })
 
-const { data } = itemStore.getItem(q)
+const increment = () => {
+  q.value.id++
+}
 
-watch(() => q.value, (newQ) => {
-  console.log('watch from component', newQ)
-})
-onMounted(() => {
-  setInterval(() => {
-    q.value.id = q.value.id + 1
-    console.log('updating', q.value)
-  }, 1000)
-})
+watch(q, () => {
+  console.log(q.value)
+}, { deep: true })
+
+const { data } = itemStore.getItem(q)
 </script>
 
 <template>
@@ -52,7 +50,14 @@ onMounted(() => {
     <NuxtLoadingIndicator />
 
     <NuxtLayout>
-      <pre>{{ data }}</pre>
+      <div>
+        <pre>{{ q }}</pre>
+        <pre>{{ data }}</pre>
+
+        <UButton @click="increment">
+          increment
+        </UButton>
+      </div>
       <NuxtPage />
     </NuxtLayout>
 
