@@ -77,12 +77,6 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     }
   })
 
-  const storeItem = async (item: Item) => {}
-  const storeItems = async (item: Item[]) => {}
-
-  const upsertItem = async (item: Item) => {}
-  const upsertItems = async (items: Item[]) => {}
-
   const getItem = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {
     const itemStore = useItemStore()
 
@@ -115,6 +109,12 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     }
   }
   const getItems = async (queries: RefLike<PrimaryKeyQuery<Item, typeof options>>[]) => {}
+
+  const storeItem = async (item: Item) => {}
+  const storeItems = async (item: Item[]) => {}
+
+  const upsertItem = async (item: Item) => {}
+  const upsertItems = async (items: Item[]) => {}
 
   const removeItem = async (item: Item) => {}
   const removeItems = async (items: Item[]) => {}
