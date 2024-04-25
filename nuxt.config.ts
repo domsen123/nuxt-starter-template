@@ -4,13 +4,16 @@ export default defineNuxtConfig({
   modules: [
     '@nuxt/ui',
     '@nuxt/fonts',
-    '@vueuse/nuxt'
+    '@vueuse/nuxt',
+    '@pinia/nuxt',
   ],
+  pinia: {
+    storesDirs: ['./core/stores/**'],
+  },
   ui: {
     icons: ['heroicons', 'simple-icons'],
-    safelistColors: ['primary', 'red', 'orange', 'green']
   },
   devtools: {
-    enabled: true
-  }
+    enabled: true,
+  },
 })
