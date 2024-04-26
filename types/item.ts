@@ -1,13 +1,12 @@
-export type StoredItem<T extends AnyItem> = SavedItem<T> & {
-  __stored_at: number
-}
+import type { Filter as MongoFilter, ObjectId } from 'mongodb'
+import type { PipelineStage } from 'mongoose'
 
 export interface AnyItem {
   [key: string | number | symbol]: any
 }
 
 export type SavedItem<Item extends AnyItem> = {
-  _id: string
+  _id: string | ObjectId
   version: number
   version_id: string
   created_at: Date
@@ -16,26 +15,26 @@ export type SavedItem<Item extends AnyItem> = {
   updated_by: string
 } & Item
 
-export type SinglePrimaryKey<Item> = keyof Item
-export type MultiplePrimaryKey<Item> = Array<keyof Item>
+export type StoredItem<Item extends AnyItem> = SavedItem<Item> & {
+  __stored_at: number
+}
 
 export interface ItemStoreOptions<Item extends AnyItem> {
   collectionName: string
-  primaryKey: SinglePrimaryKey<Item> | MultiplePrimaryKey<Item>
+  primaryKey: keyof SavedItem<Item> | Array<keyof SavedItem<Item>>
   ttl?: number
 }
 
-// Hilfstyp für den Fall, dass primaryKey ein einzelner Schlüssel ist
-type SinglePrimaryKeyQuery<Item extends AnyItem, Key extends keyof Item> = {
-  [P in Key]: Item[P];
-}
+export type Filter<Item extends AnyItem> = MongoFilter<StoredItem<Item>>
 
-// Hilfstyp für den Fall, dass primaryKey ein Array von Schlüsseln ist
-type MultiplePrimaryKeyQuery<Item extends AnyItem, Keys extends Array<keyof Item>> = {
-  [P in Keys[number]]: Item[P];
+export interface ItemQuery<Item extends AnyItem = AnyItem> {
+  select?: Array<keyof StoredItem<Item> | '*' >
+  filter?: Filter<StoredItem<Item>>
+  sort?: Array<[keyof StoredItem<Item>, 1 | -1]>
+  aggregate?: PipelineStage[]
+  search?: string
+  limit?: number
+  offset?: number
+  page?: number
+  singleton?: boolean
 }
-
-export type PrimaryKeyQuery<Item extends AnyItem, Options extends ItemStoreOptions<Item>> =
-  Options['primaryKey'] extends Array<keyof Item>
-    ? MultiplePrimaryKeyQuery<Item, Options['primaryKey']>
-    : SinglePrimaryKeyQuery<Item, Extract<Options['primaryKey'], keyof Item>>

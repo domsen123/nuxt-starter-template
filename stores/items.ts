@@ -1,7 +1,9 @@
-import type { AnyItem, ItemQuery, ItemStoreOptions, PrimaryKeyQuery, RefLike, SavedItem, StoredItem } from '~/types'
+import type { AnyItem, ItemQuery, ItemStoreOptions, RefLike, SavedItem, StoredItem } from '~/types'
 import { ObjectKeys } from '~/utils/object'
 
-export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptions<Item>) => {
+export const useItems = <Item extends AnyItem>(options: ItemStoreOptions<Item>) => {
+  type PrimaryKeyQuery = RefLike<Pick<Partial<SavedItem<Item>>, typeof primaryKeys[number]>>
+
   const internalColumns = ['_id', 'version', 'version_id', 'created_at', 'updated_at', 'created_by', 'updated_by']
 
   const {
@@ -9,7 +11,8 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     primaryKey,
     ttl = 10 * 1000, // 10 seconds in ms
   } = options
-  const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey]
+
+  const primaryKeys = (Array.isArray(primaryKey) ? primaryKey : [primaryKey]) as Array<keyof SavedItem<Item>>
 
   const { getRequest, addRequest, removeRequest, requestExists } = useRequestsStore()
   const { addError } = useErrorStore()
@@ -26,7 +29,7 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
   const useItemStore = defineStore(`items:${collectionName}`, () => {
     const items: Ref<Array<StoredItem<Item>>> = ref([])
 
-    const getItemByPrimaryKey = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => computed(() => {
+    const getItemByPrimaryKey = (query: PrimaryKeyQuery) => computed(() => {
       const queryValue = unref(query)
       return items.value.find((item) => {
         return ObjectKeys(queryValue).every(key => item[key] === queryValue[key])
@@ -41,6 +44,7 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     }
 
     const setOneStateItem = (item: SavedItem<Item>) => {
+      // @ts-expect-error TODO: fix this type error
       const existsAtIndex = items.value.findIndex(i => primaryKeys.every(key => i[key] === item[key]))
       if (existsAtIndex !== -1) {
         item = mergeOneStateItem(item, items.value[existsAtIndex])
@@ -56,6 +60,7 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     }
 
     const removeOneStateItem = (item: SavedItem<Item>) => {
+      // @ts-expect-error TODO: fix this type error
       const existsAtIndex = items.value.findIndex(i => primaryKeys.every(key => i[key] === item[key]))
       if (existsAtIndex !== -1)
         items.value.splice(existsAtIndex, 1)
@@ -116,7 +121,7 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     return resultPromise as typeof result & Promise<typeof result>
   }
 
-  const getItem = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {
+  const getItem = (query: PrimaryKeyQuery) => {
     const itemStore = useItemStore()
 
     // creates a unique hash for the request based on the query
@@ -126,7 +131,7 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
     const data: Ref<SavedItem<Item> | null> = ref(null)
     const item = itemStore.getItemByPrimaryKey(query)
 
-    const execute = (q: RefLike<PrimaryKeyQuery<Item, typeof options>>): Promise<SavedItem<Item>> => {
+    const execute = (q: typeof query): Promise<SavedItem<Item>> => {
       return new Promise((resolve) => {
         if (item.value && (Date.now() - item.value.__stored_at) < ttl) {
           loading.value = false
@@ -134,26 +139,15 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
           return resolve(data.value)
         }
         else {
-          $fetch<SavedItem<Item>>(`/api/items/${collectionName}/query`, {
-            method: 'POST',
-            body: JSON.stringify({
-              filter: {
-                $and: ObjectKeys(unref(query)).map(key => ({
-                  [key]: unref(q)[key],
-                })),
-              },
-              singleton: true,
-            }),
-          })
-            .then((result) => {
-              data.value = result
-              itemStore.setOneStateItem(data.value)
-              resolve(data.value)
-            })
-            .catch(addError)
-            .finally(() => {
-              loading.value = false
-            })
+          // @ts-expect-error TODO: fix this type error
+          queryItems(ref({
+            filter: {
+              $and: ObjectEntries(unref(q)).map(([key, value]) => ({
+                [key as keyof Item]: { $eq: value }, // as Filter<Item>[keyof Item],
+              })),
+            },
+            singleton: true,
+          }))
         }
       })
     }
@@ -175,16 +169,16 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
 
     return resultPromise as typeof result & Promise<typeof result>
   }
-  const getItems = async (queries: RefLike<PrimaryKeyQuery<Item, typeof options>>[]) => {}
+  // const getItems = async (queries: RefLike<PrimaryKeyQuery<Item, typeof options>>[]) => {}
 
-  const storeItem = async (item: Item) => {}
-  const storeItems = async (item: Item[]) => {}
+  // const storeItem = async (item: Item) => {}
+  // const storeItems = async (item: Item[]) => {}
 
-  const upsertItem = async (item: Item) => {}
-  const upsertItems = async (items: Item[]) => {}
+  // const upsertItem = async (item: Item) => {}
+  // const upsertItems = async (items: Item[]) => {}
 
-  const removeItem = async (item: Item) => {}
-  const removeItems = async (items: Item[]) => {}
+  // const removeItem = async (item: Item) => {}
+  // const removeItems = async (items: Item[]) => {}
 
   return {
     queryItems,

@@ -42,8 +42,13 @@ interface IUser {
 
 const itemStore = useItems<IUser>({
   collectionName: '_test_',
-  primaryKey: 'email',
+  primaryKey: ['email', 'address'],
 })
+
+const { data, item } = itemStore.getItem(ref({
+  email: 'test',
+  address: 'test',
+}))
 </script>
 
 <template>
@@ -51,6 +56,7 @@ const itemStore = useItems<IUser>({
     <NuxtLoadingIndicator />
 
     <NuxtLayout>
+      <pre>{{ { data, item } }}</pre>
       <NuxtPage />
     </NuxtLayout>
 
