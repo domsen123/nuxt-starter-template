@@ -79,7 +79,41 @@ export const useItems = <Item extends AnyItem = AnyItem>(options: ItemStoreOptio
   })
 
   const queryItems = (query: RefLike<ItemQuery<Item>>) => {
+    const itemStore = useItemStore()
 
+    const requestHash = getRequestHash(unref(query))
+
+    const loading = ref(true)
+    const data: Ref<SavedItem<Item> | SavedItem<Item>[] | null> = ref(null)
+
+    const execute = (q: typeof query): Promise<SavedItem<Item> | SavedItem<Item>[]> => {
+      return new Promise((resolve) => {
+        $fetch<SavedItem<Item> | SavedItem<Item>[]>(`/api/items/${collectionName}/query`, {
+          method: 'POST',
+          body: JSON.stringify(unref(q)),
+        }).then((result) => {
+          data.value = result
+          Array.isArray(result) ? itemStore.setManyStateItems(result) : itemStore.setOneStateItem(result)
+          resolve(data.value)
+        }).catch(addError)
+          .finally(() => loading.value = false)
+      })
+    }
+
+    const dataPromise = requestExists(requestHash)
+      ? getRequest<ReturnType<typeof execute>>(requestHash)
+      : addRequest(requestHash, execute(query))
+
+    removeRequest(requestHash)
+
+    watch(query, execute, { deep: true })
+
+    const result = { loading, data, refetch: () => execute(query) }
+
+    const resultPromise = Promise.resolve(dataPromise).then(() => result)
+    Object.assign(resultPromise, result)
+
+    return resultPromise as typeof result & Promise<typeof result>
   }
 
   const getItem = (query: RefLike<PrimaryKeyQuery<Item, typeof options>>) => {

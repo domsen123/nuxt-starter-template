@@ -44,15 +44,6 @@ const itemStore = useItems<IUser>({
   collectionName: '_test_',
   primaryKey: 'email',
 })
-const q = ref({ id: 123 })
-
-const increment = () => {
-  q.value.id++
-}
-
-const decrement = () => {
-  q.value.id--
-}
 </script>
 
 <template>
@@ -60,21 +51,6 @@ const decrement = () => {
     <NuxtLoadingIndicator />
 
     <NuxtLayout>
-      <div>
-        Query:
-        <pre>{{ q }}</pre>
-        Item:
-        <pre>{{ { data, item, loading } }}</pre>
-
-        <div class="flex gap-2">
-          <UButton @click="increment">
-            increment
-          </UButton>
-          <UButton @click="decrement">
-            decrement
-          </UButton>
-        </div>
-      </div>
       <NuxtPage />
     </NuxtLayout>
 
