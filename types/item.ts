@@ -1,5 +1,5 @@
 export type StoredItem<T extends AnyItem> = SavedItem<T> & {
-  __stored_at: Date
+  __stored_at: number
 }
 
 export interface AnyItem {
@@ -22,7 +22,7 @@ export type MultiplePrimaryKey<Item> = Array<keyof Item>
 export interface ItemStoreOptions<Item extends AnyItem> {
   collectionName: string
   primaryKey: SinglePrimaryKey<Item> | MultiplePrimaryKey<Item>
-  ttl: number
+  ttl?: number
 }
 
 // Hilfstyp für den Fall, dass primaryKey ein einzelner Schlüssel ist

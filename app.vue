@@ -27,10 +27,22 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
-const itemStore = useItems({
+interface IUser {
+  firstname: string
+  lastname: string
+  email: string
+  password: string
+  role: string
+  city: string
+  country: string
+  postalCode: string
+  address: string
+  phone: string
+}
+
+const itemStore = useItems<IUser>({
   collectionName: '_test_',
-  primaryKey: 'id',
-  ttl: 200,
+  primaryKey: 'email',
 })
 const q = ref({ id: 123 })
 
@@ -38,11 +50,9 @@ const increment = () => {
   q.value.id++
 }
 
-watch(q, () => {
-  console.log(q.value)
-}, { deep: true })
-
-const { data, item } = await itemStore.getItem(q)
+const decrement = () => {
+  q.value.id--
+}
 </script>
 
 <template>
@@ -51,13 +61,19 @@ const { data, item } = await itemStore.getItem(q)
 
     <NuxtLayout>
       <div>
+        Query:
         <pre>{{ q }}</pre>
-        <pre>{{ data }}</pre>
-        <pre>{{ item }}</pre>
+        Item:
+        <pre>{{ { data, item, loading } }}</pre>
 
-        <UButton @click="increment">
-          increment
-        </UButton>
+        <div class="flex gap-2">
+          <UButton @click="increment">
+            increment
+          </UButton>
+          <UButton @click="decrement">
+            decrement
+          </UButton>
+        </div>
       </div>
       <NuxtPage />
     </NuxtLayout>

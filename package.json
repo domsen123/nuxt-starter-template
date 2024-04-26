@@ -23,6 +23,7 @@
     "@vueuse/nuxt": "^10.9.0",
     "crypto-js": "^4.2.0",
     "date-fns": "^3.6.0",
+    "mongodb": "^6.5.0",
     "nuxt": "^3.11.2",
     "pinia": "^2.1.7",
     "up": "^1.0.2",
@@ -33,6 +34,7 @@
     "@nuxt/eslint-config": "^0.2.0",
     "@types/crypto-js": "^4.2.2",
     "eslint": "^8.57.0",
+    "mongoose": "^8.3.2",
     "vue-tsc": "^2.0.14"
   }
 }
