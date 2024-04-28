@@ -5,6 +5,10 @@ export interface AnyItem {
   [key: string | number | symbol]: any
 }
 
+// export type UnsavedItem<Item> = {
+//   [key in keyof SavedItem<Item>]?: never;
+// } & Item
+
 export type SavedItem<Item extends AnyItem> = {
   _id: string | ObjectId
   version: number
