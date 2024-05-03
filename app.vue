@@ -26,29 +26,6 @@ useSeoMeta({
   twitterImage: 'https://dashboard-template.nuxt.dev/social-card.png',
   twitterCard: 'summary_large_image',
 })
-
-interface IUser {
-  firstname: string
-  lastname: string
-  email: string
-  password: string
-  role: string
-  city: string
-  country: string
-  postalCode: string
-  address: string
-  phone: string
-}
-
-const itemStore = useItems<IUser>({
-  collectionName: '_test_',
-  primaryKey: ['email', 'address'],
-})
-
-const { data, item } = itemStore.getItem(ref({
-  email: 'test',
-  address: 'test',
-}))
 </script>
 
 <template>
@@ -56,7 +33,6 @@ const { data, item } = itemStore.getItem(ref({
     <NuxtLoadingIndicator />
 
     <NuxtLayout>
-      <pre>{{ { data, item } }}</pre>
       <NuxtPage />
     </NuxtLayout>
 

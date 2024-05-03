@@ -10,6 +10,10 @@ export default defineNuxtConfig({
   ui: {
     icons: ['heroicons', 'simple-icons'],
   },
+  runtimeConfig: {
+    mongoUri: '',
+    mongoDatabase: '',
+  },
   devtools: {
     enabled: true,
   },

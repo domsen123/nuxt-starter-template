@@ -2,12 +2,8 @@ import type { Filter as MongoFilter, ObjectId } from 'mongodb'
 import type { PipelineStage } from 'mongoose'
 
 export interface AnyItem {
-  [key: string | number | symbol]: any
+  [key: string]: any
 }
-
-// export type UnsavedItem<Item> = {
-//   [key in keyof SavedItem<Item>]?: never;
-// } & Item
 
 export type SavedItem<Item extends AnyItem> = {
   _id: string | ObjectId
@@ -21,6 +17,7 @@ export type SavedItem<Item extends AnyItem> = {
 
 export type StoredItem<Item extends AnyItem> = SavedItem<Item> & {
   __stored_at: number
+  __collection: string
 }
 
 export interface ItemStoreOptions<Item extends AnyItem> {
@@ -35,8 +32,8 @@ export interface ItemQuery<Item extends AnyItem = AnyItem> {
   select?: Array<keyof StoredItem<Item> | '*' >
   filter?: Filter<StoredItem<Item>>
   sort?: Array<[keyof StoredItem<Item>, 1 | -1]>
-  aggregate?: PipelineStage[]
-  search?: string
+  // aggregate?: PipelineStage[]
+  // search?: string
   limit?: number
   offset?: number
   page?: number

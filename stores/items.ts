@@ -1,4 +1,6 @@
+import sift from 'sift'
 import type { AnyItem, ItemQuery, ItemStoreOptions, RefLike, SavedItem, StoredItem } from '~/types'
+import { multiSort } from '~/utils/array'
 import { ObjectKeys } from '~/utils/object'
 
 export const useItems = <Item extends AnyItem>(options: ItemStoreOptions<Item>) => {
@@ -9,12 +11,10 @@ export const useItems = <Item extends AnyItem>(options: ItemStoreOptions<Item>) 
   const {
     collectionName,
     primaryKey,
-    ttl = 10 * 1000, // 10 seconds in ms
+    // ttl = 10 * 1000, // 10 seconds in ms
   } = options
 
   const primaryKeys = (Array.isArray(primaryKey) ? primaryKey : [primaryKey]) as Array<keyof SavedItem<Item>>
-
-  const { getRequest, addRequest, removeRequest, requestExists } = useRequestsStore()
   const { addError } = useErrorStore()
 
   const getRequestHash = (obj: any) => {
@@ -24,6 +24,7 @@ export const useItems = <Item extends AnyItem>(options: ItemStoreOptions<Item>) 
   const toStoredItem = <T extends SavedItem<Item>>(item: T): StoredItem<T> => ({
     ...item,
     __stored_at: Date.now(),
+    __collection: collectionName,
   })
 
   const useItemStore = defineStore(`items:${collectionName}`, () => {
@@ -34,6 +35,21 @@ export const useItems = <Item extends AnyItem>(options: ItemStoreOptions<Item>) 
       return items.value.find((item) => {
         return ObjectKeys(queryValue).every(key => item[key] === queryValue[key])
       })
+    })
+
+    const getItemsByFilter = (query: RefLike<ItemQuery<Item>>) => computed(() => {
+      const q = unref(query)
+      // @ts-expect-error TODO: fix this type error
+      const filter = q.filter ? sift(q.filter) : () => true
+
+      let result = items.value.filter(filter)
+
+      if (q.sort) {
+        // @ts-expect-error TODO: fix this type error
+        result = multiSort(result, q.sort)
+      }
+
+      return result
     })
 
     const mergeOneStateItem = (newItem: Partial<Item>, oldItem: SavedItem<Item>): SavedItem<Item> => {
@@ -76,6 +92,7 @@ export const useItems = <Item extends AnyItem>(options: ItemStoreOptions<Item>) 
     return {
       items,
       getItemByPrimaryKey,
+      getItemsByFilter,
       setOneStateItem,
       setManyStateItems,
       removeOneStateItem,
@@ -85,103 +102,37 @@ export const useItems = <Item extends AnyItem>(options: ItemStoreOptions<Item>) 
 
   const queryItems = (query: RefLike<ItemQuery<Item>>) => {
     const itemStore = useItemStore()
+    const requestHash = computed(() => getRequestHash(unref(query)))
 
-    const requestHash = getRequestHash(unref(query))
+    const items = itemStore.getItemsByFilter(query)
 
-    const loading = ref(true)
-    const data: Ref<SavedItem<Item> | SavedItem<Item>[] | null> = ref(null)
+    const _prepare = (q: typeof query) => useAsyncData<SavedItem<Item> | SavedItem<Item>[]>(
+      requestHash.value,
+      () => $fetch(`/api/items/${collectionName}/query`, {
+        method: 'POST',
+        body: JSON.stringify(unref(q)),
+      }),
+      {
+        immediate: false,
+        watch: [requestHash],
+        dedupe: 'cancel',
+      },
+    )
 
-    const execute = (q: typeof query): Promise<SavedItem<Item> | SavedItem<Item>[]> => {
-      return new Promise((resolve) => {
-        $fetch<SavedItem<Item> | SavedItem<Item>[]>(`/api/items/${collectionName}/query`, {
-          method: 'POST',
-          body: JSON.stringify(unref(q)),
-        }).then((result) => {
-          data.value = result
-          Array.isArray(result) ? itemStore.setManyStateItems(result) : itemStore.setOneStateItem(result)
-          resolve(data.value)
-        }).catch(addError)
-          .finally(() => loading.value = false)
-      })
-    }
+    const { data, pending, status, execute, refresh, clear, error } = _prepare(query)
+    watch(data, () => itemStore.handleResult({ data }), { deep: true })
+    watch(error, error => error && addError(error), { deep: true })
 
-    const dataPromise = requestExists(requestHash)
-      ? getRequest<ReturnType<typeof execute>>(requestHash)
-      : addRequest(requestHash, execute(query))
+    const result = { data, items, error, pending, status, execute, refresh, clear }
+    const promise = execute()
 
-    removeRequest(requestHash)
-
-    watch(query, execute, { deep: true })
-
-    const result = { loading, data, refetch: () => execute(query) }
-
-    const resultPromise = Promise.resolve(dataPromise).then(() => result)
+    const resultPromise = Promise.resolve(promise).then(() => result)
     Object.assign(resultPromise, result)
 
     return resultPromise as typeof result & Promise<typeof result>
   }
-
-  const getItem = (query: PrimaryKeyQuery) => {
-    const itemStore = useItemStore()
-
-    // creates a unique hash for the request based on the query
-    const requestHash = getRequestHash(unref(query))
-
-    const loading = ref(true)
-    const data: Ref<SavedItem<Item> | null> = ref(null)
-    const item = itemStore.getItemByPrimaryKey(query)
-
-    const execute = (q: typeof query): Promise<SavedItem<Item>> => {
-      return new Promise((resolve) => {
-        if (item.value && (Date.now() - item.value.__stored_at) < ttl) {
-          loading.value = false
-          data.value = omit(item.value, ['__stored_at']) as SavedItem<Item>
-          return resolve(data.value)
-        }
-        else {
-          // @ts-expect-error TODO: fix this type error
-          queryItems(ref({
-            filter: {
-              $and: ObjectEntries(unref(q)).map(([key, value]) => ({
-                [key as keyof Item]: { $eq: value }, // as Filter<Item>[keyof Item],
-              })),
-            },
-            singleton: true,
-          }))
-        }
-      })
-    }
-
-    const dataPromise = requestExists(requestHash)
-      ? getRequest<ReturnType<typeof execute>>(requestHash)
-      : addRequest(requestHash, execute(query))
-
-    // await dataPromise
-
-    removeRequest(requestHash)
-
-    watch(query, execute, { deep: true })
-
-    const result = { item, loading, data, refetch: () => execute(query) }
-
-    const resultPromise = Promise.resolve(dataPromise).then(() => result)
-    Object.assign(resultPromise, result)
-
-    return resultPromise as typeof result & Promise<typeof result>
-  }
-  // const getItems = async (queries: RefLike<PrimaryKeyQuery<Item, typeof options>>[]) => {}
-
-  // const storeItem = async (item: Item) => {}
-  // const storeItems = async (item: Item[]) => {}
-
-  // const upsertItem = async (item: Item) => {}
-  // const upsertItems = async (items: Item[]) => {}
-
-  // const removeItem = async (item: Item) => {}
-  // const removeItems = async (items: Item[]) => {}
 
   return {
     queryItems,
-    getItem,
   }
 }
